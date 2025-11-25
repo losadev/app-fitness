@@ -10,6 +10,13 @@ export default function TeamLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          title: "Equipo",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

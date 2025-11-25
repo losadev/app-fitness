@@ -157,7 +157,7 @@ export default function PlayerScreen() {
 
     return (
       <TouchableOpacity
-        className="bg-white rounded-lg p-4 mb-3 mx-2 shadow-sm"
+        className="bg-white rounded-lg p-4 mb-3 shadow-sm"
         onPress={() =>
           router.push({ pathname: "/player/[id]", params: { id: item.id } })
         }
@@ -216,6 +216,7 @@ export default function PlayerScreen() {
               keyExtractor={(item) => item.id}
               renderItem={renderPlayer}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 138 }}
             />
           ) : (
             <Text className="text-gray-600 text-center mt-10">

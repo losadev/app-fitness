@@ -5,9 +5,11 @@ import {
   ActivityIndicator,
   FlatList,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { database } from "../../FirebaseConfig";
 import "../global.css";
 
@@ -34,6 +36,8 @@ export default function TeamDetailScreen() {
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
+  const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
 
   const categories = {
     primer_equipo: "Primer Equipo",
@@ -116,6 +120,7 @@ export default function TeamDetailScreen() {
           // Ordenar jugadores por nombre
           playersData.sort((a, b) => a.name.localeCompare(b.name));
           setPlayers(playersData);
+          setFilteredPlayers(playersData); // Inicializar lista filtrada
           setLoading(false);
         }
       );
@@ -127,6 +132,33 @@ export default function TeamDetailScreen() {
     }
   };
 
+  // Efecto para filtrar jugadores cuando cambia el texto de búsqueda
+  useEffect(() => {
+    filterPlayers();
+  }, [searchText, players]);
+
+  const filterPlayers = () => {
+    if (!searchText.trim()) {
+      setFilteredPlayers(players);
+      return;
+    }
+
+    const filtered = players.filter((player) => {
+      const searchLower = searchText.toLowerCase();
+
+      // Buscar por nombre
+      const matchesName = player.name.toLowerCase().includes(searchLower);
+
+      // Buscar por apellido
+      const matchesLastName = player.lastName
+        .toLowerCase()
+        .includes(searchLower);
+
+      return matchesName || matchesLastName;
+    });
+
+    setFilteredPlayers(filtered);
+  };
   const renderPlayer = ({ item }: { item: Player }) => (
     <View className="bg-white rounded-lg p-4 mx-4 my-2 shadow-md border border-gray-200">
       <Text className="text-lg font-bold text-gray-800 mb-1">
@@ -168,33 +200,47 @@ export default function TeamDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-blue-100">
+    <SafeAreaView className="flex-1 bg-blue-100">
       {/* Header */}
-      <View className="bg-blue-600 pt-12 pb-6 px-4">
+      <View className="bg-blue-600 pt-4 pb-6 px-4">
         <TouchableOpacity className="mb-4" onPress={() => router.back()}>
           <Text className="text-white text-base">← Volver a Equipos</Text>
         </TouchableOpacity>
 
         <Text className="text-3xl font-bold text-white mb-2">{team.name}</Text>
-        <Text className="text-blue-200 text-base mb-2">
-          {categories[team.category as keyof typeof categories] ||
-            team.category}
+        <Text className="text-blue-200 text-sm mb-4">
+          {filteredPlayers.length}/{players.length}{" "}
+          {players.length === 1 ? "jugador" : "jugadores"}
         </Text>
-        <Text className="text-blue-200 text-sm">
-          {players.length} {players.length === 1 ? "jugador" : "jugadores"}
-        </Text>
+
+        {/* Campo de búsqueda */}
+        <TextInput
+          className="bg-white px-4 py-3 rounded-lg border border-blue-300"
+          placeholder="Buscar jugador por nombre o apellido..."
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholderTextColor="#9CA3AF"
+        />
       </View>
 
       {/* Lista de jugadores */}
       <View className="flex-1">
         {players.length > 0 ? (
-          <FlatList
-            data={players}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPlayer}
-            contentContainerStyle={{ paddingVertical: 16 }}
-            showsVerticalScrollIndicator={false}
-          />
+          filteredPlayers.length > 0 ? (
+            <FlatList
+              data={filteredPlayers}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPlayer}
+              contentContainerStyle={{ paddingVertical: 16 }}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View className="flex-1 justify-center items-center px-6">
+              <Text className="text-xl text-gray-600 text-center mb-2">
+                No se encontraron jugadores que coincidan con la búsqueda
+              </Text>
+            </View>
+          )
         ) : (
           <View className="flex-1 justify-center items-center px-6">
             <Text className="text-xl text-gray-600 text-center mb-2">
@@ -212,6 +258,6 @@ export default function TeamDetailScreen() {
           </View>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
