@@ -345,7 +345,10 @@ export default function TrainingScreen() {
 
       {/* Fase de Entrenamiento */}
       {trainingPhase === "training" && (
-        <View className="flex-1 p-6">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+        >
           <View className="bg-white rounded-lg p-6 shadow-lg mb-6">
             <Text className="text-2xl font-bold text-green-600 mb-4 text-center">
               🏋️ Entrenamiento en Curso
@@ -395,12 +398,15 @@ export default function TrainingScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </ScrollView>
       )}
 
       {/* Fase de Serie en Curso (datos en tiempo real) */}
       {trainingPhase === "series" && (
-        <View className="flex-1 p-6">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+        >
           <View className="bg-white rounded-lg p-6 shadow-lg mb-6">
             <Text className="text-2xl font-bold text-orange-600 mb-4 text-center">
               🔥 Serie en Curso
@@ -444,7 +450,7 @@ export default function TrainingScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       )}
 
       {/* Modal de selección de ejercicio */}
