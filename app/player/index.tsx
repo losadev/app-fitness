@@ -1,8 +1,17 @@
-import { AddUser } from "@/components";
-import { database } from "@/FirebaseConfig";
-import { collection, onSnapshot } from "firebase/firestore";
+import { useRouter } from "expo-router";
+import { collection, getDocs, onSnapshot, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { FlatList, Modal, Text, TouchableOpacity, View } from "react-native";
+import {
+  FlatList,
+  Modal,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AddUser } from "../../components";
+import { database } from "../../FirebaseConfig";
 import "../global.css";
 
 interface Player {
@@ -13,13 +22,28 @@ interface Player {
   height: number;
   weight: number;
   position: string;
+  teamId: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  category: string;
 }
 
 export default function PlayerScreen() {
+  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
 
   useEffect(() => {
+    // Cargar equipos primero
+    fetchTeams();
+
+    // Luego cargar jugadores
     const unsubscribe = onSnapshot(
       collection(database, "players"),
       (querySnapshot) => {
@@ -28,42 +52,143 @@ export default function PlayerScreen() {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
 
+          // Extraer el teamId correctamente
+          let teamId = "";
+          if (data.teamId) {
+            // Si teamId es una referencia de Firestore, extraer su id
+            if (data.teamId.id) {
+              teamId = data.teamId.id;
+            }
+            // Si teamId es un string, usarlo directamente (para compatibilidad)
+            else if (typeof data.teamId === "string") {
+              teamId = data.teamId;
+            }
+          }
+
           playersData.push({
             id: doc.id,
-            ...data,
-          } as Player);
+            name: data.name || "",
+            lastName: data.lastName || "",
+            age: data.age || "",
+            height: data.height || 0,
+            weight: data.weight || 0,
+            position: data.position || "",
+            teamId: teamId, // Ahora es siempre un string
+          });
         });
+        console.log("Jugadores cargados: ", playersData);
 
         setPlayers(playersData);
+        setFilteredPlayers(playersData); // Inicialmente mostrar todos
       }
     );
 
     return () => unsubscribe();
   }, []);
 
-  const renderPlayer = ({ item }: { item: Player }) => (
-    <View className="bg-white rounded-lg p-4 mb-3 mx-2 shadow-sm">
-      <Text className="text-lg font-bold text-gray-800">
-        {item.name || "Sin nombre"} {item.lastName || "Sin apellido"}
-      </Text>
-      <Text className="text-gray-600">
-        Posición: {item.position || "No especificada"}
-      </Text>
-      <Text className="text-gray-600">
-        Altura: {item.height || 0}cm | Peso: {item.weight || 0}kg
-      </Text>
-      <Text className="text-gray-600">
-        Fecha: {typeof item.age === "string" ? item.age : "No especificada"}
-      </Text>
-    </View>
-  );
+  // Efecto para filtrar jugadores cuando cambia el texto de búsqueda
+  useEffect(() => {
+    filterPlayers();
+  }, [searchText, players, teams]);
+
+  const filterPlayers = () => {
+    if (!searchText.trim()) {
+      setFilteredPlayers(players);
+      return;
+    }
+
+    const filtered = players.filter((player) => {
+      const searchLower = searchText.toLowerCase();
+
+      // Buscar por nombre
+      const matchesName = player.name.toLowerCase().includes(searchLower);
+
+      // Buscar por apellido
+      const matchesLastName = player.lastName
+        .toLowerCase()
+        .includes(searchLower);
+
+      // Buscar por equipo
+      const team = teams.find((t) => t.id === player.teamId);
+      const matchesTeam =
+        team?.name.toLowerCase().includes(searchLower) || false;
+
+      return matchesName || matchesLastName || matchesTeam;
+    });
+
+    setFilteredPlayers(filtered);
+  };
+
+  const fetchTeams = async () => {
+    try {
+      const q = query(collection(database, "teams"));
+      const querySnapshot = await getDocs(q);
+      const teamsData: Team[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        teamsData.push({
+          id: doc.id,
+          name: data.name || "",
+          category: data.category || "",
+        });
+      });
+      setTeams(teamsData);
+    } catch (error) {
+      console.error("Error cargando equipos: ", error);
+    }
+  };
+
+  const renderPlayer = ({ item }: { item: Player }) => {
+    // Asegurar que todos los valores sean strings o números válidos
+    const playerName = String(item.name || "Sin nombre");
+    const playerLastName = String(item.lastName || "Sin apellido");
+    const playerPosition = String(item.position || "No especificada");
+    const playerHeight = Number(item.height) || 0;
+    const playerWeight = Number(item.weight) || 0;
+    const playerAge = String(item.age || "No especificada");
+
+    // Buscar el equipo por ID
+    const team = teams.find((t) => t.id === item.teamId);
+    const playerTeamName = team
+      ? team.name
+      : item.teamId
+        ? "Equipo no encontrado"
+        : "Sin equipo";
+
+    return (
+      <TouchableOpacity
+        className="bg-white rounded-lg p-4 mb-3 mx-2 shadow-sm"
+        onPress={() =>
+          router.push({ pathname: "/player/[id]", params: { id: item.id } })
+        }
+      >
+        <Text className="text-lg font-bold text-gray-800">
+          {playerName} {playerLastName}
+        </Text>
+        <Text className="text-gray-600">Posición: {playerPosition}</Text>
+        <Text className="text-gray-600">
+          Altura: {playerHeight}cm | Peso: {playerWeight}kg
+        </Text>
+        <Text className="text-gray-600">Fecha: {playerAge}</Text>
+        <Text className="text-gray-600">Equipo: {playerTeamName}</Text>
+        <Text className="text-xs text-blue-500 mt-2">
+          Toca para ver detalles →
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-gray-100">
+      <View className="p-4 bg-blue-600">
+        <Text className="text-2xl font-bold text-white text-center">
+          Gestión de Equipos
+        </Text>
+      </View>
       <View className="p-5">
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-2xl font-bold text-gray-800">
-            Jugadores ({players.length})
+            Jugadores ({filteredPlayers.length}/{players.length})
           </Text>
           <TouchableOpacity
             className="bg-blue-600 px-4 py-2 rounded-lg"
@@ -73,13 +198,30 @@ export default function PlayerScreen() {
           </TouchableOpacity>
         </View>
 
-        {players.length > 0 ? (
-          <FlatList
-            data={players}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPlayer}
-            showsVerticalScrollIndicator={false}
+        {/* Campo de búsqueda */}
+        <View className="mb-4">
+          <TextInput
+            className="bg-white px-4 py-3 rounded-lg border border-gray-300"
+            placeholder="Buscar por nombre, apellido o equipo..."
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholderTextColor="#9CA3AF"
           />
+        </View>
+
+        {players.length > 0 ? (
+          filteredPlayers.length > 0 ? (
+            <FlatList
+              data={filteredPlayers}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPlayer}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <Text className="text-gray-600 text-center mt-10">
+              No se encontraron jugadores que coincidan con la búsqueda
+            </Text>
+          )
         ) : (
           <Text className="text-gray-600 text-center mt-10">
             No hay jugadores registrados
@@ -129,6 +271,6 @@ export default function PlayerScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }

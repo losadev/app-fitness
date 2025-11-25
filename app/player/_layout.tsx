@@ -7,7 +7,13 @@ export default function PlayerLayout() {
         name="index"
         options={{
           title: "Jugador",
-          headerShown: true,
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          headerShown: false,
         }}
       />
     </Stack>

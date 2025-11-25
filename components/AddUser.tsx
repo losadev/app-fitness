@@ -1,6 +1,8 @@
-import { addDoc, collection } from "firebase/firestore";
-import React, { useState } from "react";
+import { addDoc, collection, doc, getDocs, query } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
+  FlatList,
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -14,6 +16,12 @@ interface AddUserProps {
   setModalVisible?: (visible: boolean) => void;
 }
 
+interface Team {
+  id: string;
+  name: string;
+  category: string;
+}
+
 const AddUser: React.FC<AddUserProps> = ({ setModalVisible }) => {
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
@@ -21,19 +29,56 @@ const AddUser: React.FC<AddUserProps> = ({ setModalVisible }) => {
   const [altura, setAltura] = useState("");
   const [peso, setPeso] = useState("");
   const [posicion, setPosicion] = useState("");
-  const [equipo, setEquipo] = useState("");
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState<Team | null>(
+    null
+  );
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [modalTeamVisible, setModalTeamVisible] = useState(false);
+
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      const q = query(collection(database, "teams"));
+      const querySnapshot = await getDocs(q);
+      const teamsData: Team[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        teamsData.push({
+          id: doc.id,
+          name: data.name || "",
+          category: data.category || "",
+        });
+      });
+      setTeams(teamsData);
+    } catch (error) {
+      console.error("Error obteniendo equipos: ", error);
+    }
+  };
 
   const handleAddUser = async () => {
+    if (!nombre.trim() || !apellido.trim()) {
+      alert("Por favor completa al menos el nombre y apellido");
+      return;
+    }
+
     try {
-      await addDoc(collection(database, "players"), {
-        name: nombre,
-        lastName: apellido,
-        age: fechaNacimiento,
-        height: parseFloat(altura),
-        weight: parseFloat(peso),
-        position: posicion,
-        //team: equipo,
-      });
+      const playerData = {
+        name: nombre.trim(),
+        lastName: apellido.trim(),
+        age: fechaNacimiento.trim() || "",
+        height: altura ? parseFloat(altura) : 0,
+        weight: peso ? parseFloat(peso) : 0,
+        position: posicion.trim() || "",
+        teamId: equipoSeleccionado
+          ? doc(database, "teams", equipoSeleccionado.id)
+          : null,
+      };
+
+      await addDoc(collection(database, "players"), playerData);
+
       // Reset form
       setNombre("");
       setApellido("");
@@ -41,8 +86,14 @@ const AddUser: React.FC<AddUserProps> = ({ setModalVisible }) => {
       setAltura("");
       setPeso("");
       setPosicion("");
-      setEquipo("");
+      setEquipoSeleccionado(null);
+
       alert("Jugador añadido exitosamente");
+
+      // Cerrar modal si está disponible
+      if (setModalVisible) {
+        setModalVisible(false);
+      }
     } catch (error) {
       console.error("Error añadiendo jugador: ", error);
       alert("Hubo un error al añadir el jugador");
@@ -141,13 +192,99 @@ const AddUser: React.FC<AddUserProps> = ({ setModalVisible }) => {
           <Text className="text-base font-semibold text-gray-700 mb-2">
             Equipo
           </Text>
-          <TextInput
-            className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-800"
-            placeholder="Real Madrid"
-            value={equipo}
-            onChangeText={setEquipo}
-          />
+          <TouchableOpacity
+            className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+            onPress={() => setModalTeamVisible(true)}
+          >
+            <Text className="text-gray-800">
+              {equipoSeleccionado
+                ? equipoSeleccionado.name
+                : "Seleccionar equipo"}
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Modal para seleccionar equipo */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalTeamVisible}
+          onRequestClose={() => setModalTeamVisible(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 16,
+                padding: 20,
+                width: "80%",
+                maxHeight: "60%",
+              }}
+            >
+              <Text className="text-xl font-bold text-center mb-4">
+                Seleccionar Equipo
+              </Text>
+              <FlatList
+                data={teams}
+                keyExtractor={(item: Team) => item.id}
+                renderItem={({ item }: { item: Team }) => (
+                  <TouchableOpacity
+                    className="p-3 border-b border-gray-200"
+                    onPress={() => {
+                      setEquipoSeleccionado(item);
+                      setModalTeamVisible(false);
+                    }}
+                  >
+                    <Text className="text-gray-800 text-base font-semibold">
+                      {item.name}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      {item.category}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={() => (
+                  <View className="p-4">
+                    <Text className="text-gray-500 text-center">
+                      No hay equipos disponibles
+                    </Text>
+                    <Text className="text-gray-400 text-center text-sm mt-2">
+                      Crea un equipo primero en la sección de Equipos
+                    </Text>
+                  </View>
+                )}
+              />
+              <TouchableOpacity
+                className="mt-4 bg-gray-500 rounded-lg p-3"
+                onPress={() => setModalTeamVisible(false)}
+              >
+                <Text className="text-white text-center font-semibold">
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+              {equipoSeleccionado && (
+                <TouchableOpacity
+                  className="mt-2 bg-red-500 rounded-lg p-3"
+                  onPress={() => {
+                    setEquipoSeleccionado(null);
+                    setModalTeamVisible(false);
+                  }}
+                >
+                  <Text className="text-white text-center font-semibold">
+                    Quitar Equipo
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Modal>
 
         {/* Botón Submit */}
         <TouchableOpacity

@@ -7,7 +7,7 @@ export default function TeamLayout() {
         name="index"
         options={{
           title: "Equipo",
-          headerShown: true,
+          headerShown: false,
         }}
       />
     </Stack>
