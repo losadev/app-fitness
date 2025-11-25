@@ -9,7 +9,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Esta aplicación necesita acceso a la ubicación para escanear dispositivos Bluetooth cercanos como sensores Movesense.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta aplicación necesita acceso a la ubicación para escanear dispositivos Bluetooth cercanos como sensores Movesense.",
+        "NSBluetoothAlwaysUsageDescription": "Esta aplicación necesita acceso a Bluetooth para conectarse con dispositivos de fitness Movesense y recopilar datos de entrenamiento.",
+        "NSBluetoothPeripheralUsageDescription": "Esta aplicación utiliza Bluetooth para conectarse con dispositivos de fitness y sensores de rendimiento deportivo.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.plosada.appfitness"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +27,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
     },
     "web": {
       "output": "static",
@@ -27,6 +40,17 @@
       "bundler": "metro"
     },
     "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": [
+            "peripheral",
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "Allow $(PRODUCT_NAME) to connect to bluetooth devices"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
@@ -39,11 +63,28 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": [
+            "BluetoothAlways",
+            "BluetoothPeripheral",
+            "LocationWhenInUse",
+            "LocationAlways"
+          ]
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5981754b-869d-4452-b821-a2ed3107b461"
+      }
     }
   }
 }
