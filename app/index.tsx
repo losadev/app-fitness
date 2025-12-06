@@ -60,21 +60,23 @@ export default function Index() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100 p-5">
-      <View className="items-center mt-16 mb-10">
-        <Ionicons name="fitness" size={60} color="#007AFF" />
-        <Text className="text-3xl font-bold text-gray-800 mt-5">
-          App Fitness Pablo
-        </Text>
-        <Text className="text-base text-gray-600 mt-2">
-          Gestiona tu equipo deportivo
-        </Text>
-      </View>
+    <View className="flex-1 bg-gray-100 justify-center p-5">
+      {/* Título principal */}
+      <Text className="text-3xl font-bold text-gray-800 text-center mb-6">
+        App Fitness
+      </Text>
 
       {/* Estado del dispositivo Movesense */}
-      <View className="bg-white rounded-lg p-6 shadow-lg mb-6">
+      <View className="bg-white rounded-lg p-6 shadow-lg">
+        <View className="items-center mb-6">
+          <Ionicons name="fitness" size={60} color="#007AFF" />
+          <Text className="text-2xl font-bold text-gray-800 mt-4">
+            Movesense HR+
+          </Text>
+        </View>
+
         <Text className="text-xl font-bold text-center mb-4 text-gray-800">
-          📱 Dispositivo Movesense
+          📱 Estado del Dispositivo
         </Text>
 
         <View className="items-center mb-4">
@@ -121,24 +123,6 @@ export default function Index() {
             </TouchableOpacity>
           </View>
         )}
-      </View>
-
-      {/* Navegación */}
-      <View className="flex-1 justify-center">
-        <Text className="text-2xl font-semibold text-gray-800 text-center mb-5">
-          ¡Bienvenido!
-        </Text>
-        <Text className="text-base text-gray-600 text-center mb-8">
-          Usa la navegación inferior para acceder a:
-        </Text>
-        <View className="bg-white rounded-xl p-5 shadow-lg">
-          <Text className="text-base text-gray-800 mb-3 py-1">
-            👥 Equipos - Gestión de equipos
-          </Text>
-          <Text className="text-base text-gray-800 mb-3 py-1">
-            🏃 Jugadores - Perfiles de jugadores
-          </Text>
-        </View>
       </View>
 
       {/* Modal para seleccionar dispositivo */}

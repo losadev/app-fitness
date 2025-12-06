@@ -1,7 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NavigationMenu() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -12,9 +16,9 @@ export default function NavigationMenu() {
           backgroundColor: "#ffffff",
           borderTopWidth: 1,
           borderTopColor: "#e1e1e1",
-          paddingBottom: 5,
+          paddingBottom: Platform.OS === "android" ? insets.bottom + 5 : 5,
           paddingTop: 5,
-          height: 60,
+          height: Platform.OS === "android" ? 60 + insets.bottom : 60,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -29,6 +33,12 @@ export default function NavigationMenu() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          href: null, // Ocultar home del menú
         }}
       />
       <Tabs.Screen

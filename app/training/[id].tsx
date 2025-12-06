@@ -38,39 +38,11 @@ export default function TrainingScreen() {
 
   // Estados para el modal de ejercicios
   const [exerciseModalVisible, setExerciseModalVisible] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
-    null
-  );
+  const [selectedExercise, setSelectedExercise] =
+    useState<ExerciseConfig | null>(null);
 
-  // Interface y lista de ejercicios
-  interface Exercise {
-    id: string;
-    name: string;
-    description: string;
-  }
-
-  const exercises: Exercise[] = [
-    {
-      id: "press-banca",
-      name: "Press Banca",
-      description: "Ejercicio de fuerza para pecho, hombros y tríceps",
-    },
-    {
-      id: "sentadilla",
-      name: "Sentadilla",
-      description: "Ejercicio de piernas y glúteos",
-    },
-    {
-      id: "peso-muerto",
-      name: "Peso Muerto",
-      description: "Ejercicio de fuerza para espalda y piernas",
-    },
-    {
-      id: "press-militar",
-      name: "Press Militar",
-      description: "Ejercicio de fuerza para hombros",
-    },
-  ];
+  // Obtener lista de ejercicios
+  const exerciseList = Object.values(EXERCISES);
 
   // Funciones para manejar los contadores
   const incrementWeight = () => {
@@ -153,7 +125,7 @@ export default function TrainingScreen() {
       setTrainingPhase("series");
       setIsTraining(true);
       console.log(
-        `Serie iniciada: ${selectedExercise?.name || exercise} - ${weight}kg - ${targetReps} repeticiones`
+        `Serie iniciada: ${selectedExercise?.nameEs || exercise} - ${weight}kg - ${targetReps} repeticiones`
       );
     }
 
@@ -414,7 +386,7 @@ export default function TrainingScreen() {
 
             <View className="bg-orange-50 rounded-lg p-4 mb-6 border border-orange-200">
               <Text className="text-lg font-semibold text-orange-800 text-center mb-2">
-                {selectedExercise?.name || exercise}
+                {selectedExercise?.nameEs || exercise}
               </Text>
               <Text className="text-orange-700 text-center">
                 Peso: {weight}kg • Objetivo: {targetReps} repeticiones
@@ -461,28 +433,86 @@ export default function TrainingScreen() {
         onRequestClose={() => setExerciseModalVisible(false)}
       >
         <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-6 rounded-lg w-80">
-            <Text className="text-xl font-bold mb-4 text-center">
-              Seleccionar Ejercicio para la Serie
+          <View className="bg-white p-6 rounded-lg w-11/12 max-h-[80%]">
+            <Text className="text-2xl font-bold mb-4 text-center text-gray-800">
+              Seleccionar Ejercicio
             </Text>
 
+            {/* Tren Inferior */}
+            <Text className="text-lg font-semibold text-blue-600 mb-2 mt-2">
+              💪 Tren Inferior
+            </Text>
             <FlatList
-              data={exercises}
+              data={exerciseList.filter((ex) => ex.category === "lower")}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  className={`p-4 mb-2 rounded-lg border ${
+                  className={`p-4 mb-2 rounded-lg border-2 ${
                     selectedExercise?.id === item.id
-                      ? "bg-green-100 border-green-500"
+                      ? "bg-blue-500 border-blue-600"
                       : "bg-gray-100 border-gray-300"
                   }`}
                   onPress={() => setSelectedExercise(item)}
                 >
-                  <Text className="font-semibold text-lg">{item.name}</Text>
-                  <Text className="text-gray-600 mt-1">{item.description}</Text>
+                  <Text
+                    className={`font-bold text-base ${
+                      selectedExercise?.id === item.id
+                        ? "text-white"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {item.nameEs}
+                  </Text>
+                  <Text
+                    className={`text-sm mt-1 ${
+                      selectedExercise?.id === item.id
+                        ? "text-blue-100"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {item.name}
+                  </Text>
                 </TouchableOpacity>
               )}
-              className="max-h-60"
+              className="mb-4"
+            />
+
+            {/* Tren Superior */}
+            <Text className="text-lg font-semibold text-orange-600 mb-2">
+              🏋️ Tren Superior
+            </Text>
+            <FlatList
+              data={exerciseList.filter((ex) => ex.category === "upper")}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  className={`p-4 mb-2 rounded-lg border-2 ${
+                    selectedExercise?.id === item.id
+                      ? "bg-orange-500 border-orange-600"
+                      : "bg-gray-100 border-gray-300"
+                  }`}
+                  onPress={() => setSelectedExercise(item)}
+                >
+                  <Text
+                    className={`font-bold text-base ${
+                      selectedExercise?.id === item.id
+                        ? "text-white"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {item.nameEs}
+                  </Text>
+                  <Text
+                    className={`text-sm mt-1 ${
+                      selectedExercise?.id === item.id
+                        ? "text-orange-100"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
             />
 
             <View className="flex-row justify-between mt-4">
