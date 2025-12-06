@@ -9,6 +9,10 @@ const MOVESENSE_SERVICE_UUID = "34802252-7185-4d5d-b431-630e7050e8f0";
 const MOVESENSE_COMMAND_CHAR = "34800001-7185-4d5d-b431-630e7050e8f0";
 const MOVESENSE_DATA_CHAR = "34800002-7185-4d5d-b431-630e7050e8f0";
 
+// ALTERNATIVA TEMPORAL: Heart Rate que SÍ funciona
+const HEART_RATE_SERVICE = "0000180d-0000-1000-8000-00805f9b34fb";
+const HEART_RATE_CHAR = "00002a37-0000-1000-8000-00805f9b34fb";
+
 interface IMUData {
   accelerometer: { x: number; y: number; z: number };
   gyroscope: { x: number; y: number; z: number };
@@ -294,9 +298,11 @@ class MovesenseManager {
       // PRIMERO: Enviar comando de suscripción al acelerómetro
       console.log("\n🔷🔷🔷 PASO 1: ENVIAR COMANDO 🔷🔷🔷");
       console.log("📤 Enviando comando de suscripción al acelerómetro...");
+
+      // Probar AMBOS formatos posibles del Path
       const accCommand = {
         Op: 2,
-        Path: "Meas/Acc/52",
+        Path: "/Meas/Acc/52", // ← Con slash inicial
       };
       console.log("📋 Comando creado:", JSON.stringify(accCommand));
 
@@ -312,14 +318,17 @@ class MovesenseManager {
 
       // SEGUNDO: Iniciar el monitoreo DESPUÉS de enviar el comando
       console.log("\n🔷🔷🔷 PASO 3: INICIAR MONITOREO 🔷🔷🔷");
-      console.log("📡 Iniciando monitoreo de característica de datos...");
-      console.log(`   Service UUID: ${MOVESENSE_SERVICE_UUID}`);
-      console.log(`   Char UUID: ${MOVESENSE_DATA_CHAR}`);
+      console.log(
+        "⚠️ USANDO HEART RATE COMO PRUEBA (Heart Rate SÍ envía datos)"
+      );
+      console.log("📡 Iniciando monitoreo de Heart Rate...");
+      console.log(`   Service UUID: ${HEART_RATE_SERVICE}`);
+      console.log(`   Char UUID: ${HEART_RATE_CHAR}`);
 
       this.imuSubscription =
         this.connectedDevice.monitorCharacteristicForService(
-          MOVESENSE_SERVICE_UUID,
-          MOVESENSE_DATA_CHAR,
+          HEART_RATE_SERVICE,
+          HEART_RATE_CHAR,
           (error, characteristic) => {
             console.log("📨 Callback de monitoreo llamado");
             if (error) {
@@ -473,7 +482,7 @@ class MovesenseManager {
       try {
         const accUnsubscribe = {
           Op: 3,
-          Path: "Meas/Acc/52",
+          Path: "/Meas/Acc/52", // ← Con slash inicial
         };
         await this.sendMovesenseCommand(accUnsubscribe);
         console.log("✅ Desuscrito del acelerómetro");
