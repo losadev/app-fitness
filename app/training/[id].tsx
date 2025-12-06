@@ -12,6 +12,8 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { EXERCISES, ExerciseConfig } from "../../constants/exercises";
+import { useMovesense } from "../../hooks/useMovesense";
 import "../global.css";
 
 export default function TrainingScreen() {
@@ -40,6 +42,13 @@ export default function TrainingScreen() {
   const [exerciseModalVisible, setExerciseModalVisible] = useState(false);
   const [selectedExercise, setSelectedExercise] =
     useState<ExerciseConfig | null>(null);
+
+  // Hook de Movesense para datos en tiempo real
+  const movesense = useMovesense();
+
+  // Estado para el cronómetro de la serie
+  const [seriesStartTime, setSeriesStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   // Obtener lista de ejercicios
   const exerciseList = Object.values(EXERCISES);
@@ -91,7 +100,7 @@ export default function TrainingScreen() {
     setExerciseModalVisible(true);
   };
 
-  const handleStartSeriesWithExercise = () => {
+  const handleStartSeriesWithExercise = async () => {
     if (selectedExercise) {
       setExerciseModalVisible(false);
       setTrainingPhase("countdown");
@@ -100,6 +109,9 @@ export default function TrainingScreen() {
       console.log(
         `Iniciando serie: ${selectedExercise.name} - ${weight}kg - ${targetReps} repeticiones`
       );
+
+      // Resetear contador de repeticiones
+      movesense.resetRepetitions();
     }
   };
 
@@ -124,15 +136,50 @@ export default function TrainingScreen() {
       setIsCountingDown(false);
       setTrainingPhase("series");
       setIsTraining(true);
+      setSeriesStartTime(Date.now());
+
       console.log(
         `Serie iniciada: ${selectedExercise?.nameEs || exercise} - ${weight}kg - ${targetReps} repeticiones`
       );
+
+      // Iniciar recolección de datos si hay ejercicio seleccionado
+      if (selectedExercise && movesense.isConnected) {
+        movesense.startDataCollection(selectedExercise);
+        console.log("📊 Iniciando recolección de datos IMU...");
+      } else if (!movesense.isConnected) {
+        console.warn("⚠️ Movesense no está conectado");
+      }
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isCountingDown, countdown, exercise, weight, targetReps]);
+  }, [
+    isCountingDown,
+    countdown,
+    exercise,
+    weight,
+    targetReps,
+    selectedExercise,
+    movesense,
+  ]);
+
+  // Efecto para cronómetro de la serie
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    if (trainingPhase === "series" && seriesStartTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - seriesStartTime) / 1000));
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [trainingPhase, seriesStartTime]);
 
   return (
     <View className="flex-1 bg-gray-100">
@@ -400,21 +447,98 @@ export default function TrainingScreen() {
               <Text className="text-xl font-bold text-purple-800 text-center mb-4">
                 📈 Monitoreo en Tiempo Real
               </Text>
-              <Text className="text-purple-600 text-center mb-3">
-                Datos del sensor Movesense activo
-              </Text>
-              <View className="bg-white rounded-lg p-4 border border-purple-100">
-                <Text className="text-purple-700 text-center font-mono">
-                  • Frecuencia cardíaca: --- bpm{"\n"}• Aceleración: --- m/s²
-                  {"\n"}• Repeticiones detectadas: --- / {targetReps}
-                  {"\n"}• Tiempo transcurrido: --- seg
+
+              {!movesense.isConnected ? (
+                <View className="bg-yellow-100 rounded-lg p-4 border border-yellow-300 mb-3">
+                  <Text className="text-yellow-800 text-center font-semibold">
+                    ⚠️ Movesense no conectado
+                  </Text>
+                  <Text className="text-yellow-700 text-center text-sm mt-1">
+                    Conecta el dispositivo desde la pantalla principal
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-purple-600 text-center mb-3">
+                  ✅ Sensor Movesense activo
                 </Text>
+              )}
+
+              <View className="bg-white rounded-lg p-4 border border-purple-100">
+                {/* Repeticiones */}
+                <View className="mb-3">
+                  <Text className="text-purple-800 font-semibold text-center text-lg">
+                    Repeticiones
+                  </Text>
+                  <Text className="text-purple-600 text-center text-3xl font-bold">
+                    {movesense.data?.repetitionCount ?? 0} / {targetReps}
+                  </Text>
+                </View>
+
+                {/* Separador */}
+                <View className="border-t border-purple-200 my-3" />
+
+                {/* Tiempo transcurrido */}
+                <View className="mb-3">
+                  <Text className="text-purple-700 text-center font-mono">
+                    ⏱️ Tiempo: {elapsedTime}s
+                  </Text>
+                </View>
+
+                {/* Datos IMU */}
+                {movesense.data?.imu && (
+                  <>
+                    <View className="border-t border-purple-200 my-3" />
+                    <Text className="text-purple-800 font-semibold text-center mb-2">
+                      Datos IMU
+                    </Text>
+
+                    {/* Acelerómetro */}
+                    <View className="mb-2">
+                      <Text className="text-purple-700 text-xs font-semibold">
+                        Acelerómetro (m/s²):
+                      </Text>
+                      <Text className="text-purple-600 font-mono text-xs">
+                        X: {movesense.data.imu.accelerometer.x.toFixed(2)} | Y:{" "}
+                        {movesense.data.imu.accelerometer.y.toFixed(2)} | Z:{" "}
+                        {movesense.data.imu.accelerometer.z.toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* Giroscopio */}
+                    <View className="mb-2">
+                      <Text className="text-purple-700 text-xs font-semibold">
+                        Giroscopio (deg/s):
+                      </Text>
+                      <Text className="text-purple-600 font-mono text-xs">
+                        X: {movesense.data.imu.gyroscope.x.toFixed(2)} | Y:{" "}
+                        {movesense.data.imu.gyroscope.y.toFixed(2)} | Z:{" "}
+                        {movesense.data.imu.gyroscope.z.toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* Magnetómetro */}
+                    <View>
+                      <Text className="text-purple-700 text-xs font-semibold">
+                        Magnetómetro (μT):
+                      </Text>
+                      <Text className="text-purple-600 font-mono text-xs">
+                        X: {movesense.data.imu.magnetometer.x.toFixed(2)} | Y:{" "}
+                        {movesense.data.imu.magnetometer.y.toFixed(2)} | Z:{" "}
+                        {movesense.data.imu.magnetometer.z.toFixed(2)}
+                      </Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
 
             <TouchableOpacity
               className="bg-orange-600 py-4 rounded-lg flex-row justify-center items-center"
-              onPress={() => setTrainingPhase("training")}
+              onPress={() => {
+                movesense.stopDataCollection();
+                setTrainingPhase("training");
+                setSeriesStartTime(null);
+              }}
             >
               <Text className="text-white font-bold text-lg mr-2">✅</Text>
               <Text className="text-white font-bold text-lg">
