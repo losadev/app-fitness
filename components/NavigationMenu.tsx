@@ -50,12 +50,6 @@ export default function NavigationMenu() {
         }}
       />
       <Tabs.Screen
-        name="home"
-        options={{
-          href: null, // Ocultar esta pestaña ya que usamos index como inicio
-        }}
-      />
-      <Tabs.Screen
         name="training"
         options={{
           href: null, // Ocultar training del menú - solo accesible programáticamente
