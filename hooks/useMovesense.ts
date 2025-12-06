@@ -45,7 +45,9 @@ export const useMovesense = (): UseMovesenseReturn => {
       setState(manager.getState());
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, [manager]);
 
   const startScan = useCallback(() => {
