@@ -40,7 +40,7 @@ class MovesenseManager {
   private imuSubscription: any = null;
   private detector: RepetitionDetector | null = null;
   private listeners: Set<StateChangeListener> = new Set();
-  private scanTimeout: NodeJS.Timeout | null = null;
+  private scanTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private constructor() {
     this.manager = new BleManager();
@@ -130,7 +130,7 @@ class MovesenseManager {
       if (this.scanTimeout) clearTimeout(this.scanTimeout);
       this.scanTimeout = setTimeout(() => {
         this.stopScan();
-      }, 15000) as NodeJS.Timeout;
+      }, 15000);
     } catch (err) {
       console.error("❌ Error iniciando escaneo:", err);
       this.error = "Error iniciando búsqueda";
@@ -301,6 +301,19 @@ class MovesenseManager {
                     `📊 IMU - X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}, Z: ${z.toFixed(2)}`
                   );
 
+                  // Crear muestra IMU completa
+                  const imuSample = {
+                    timestamp: Date.now(),
+                    accelerometer: { x, y, z },
+                    gyroscope: { x: 0, y: 0, z: 0 }, // TODO: parsear gyro correctamente
+                  };
+
+                  // Procesar con detector de repeticiones
+                  if (this.detector) {
+                    const result = this.detector.processSample(imuSample);
+                    this.repetitionCount = result.count;
+                  }
+
                   this.data = {
                     imu: {
                       accelerometer: { x, y, z },
@@ -310,20 +323,6 @@ class MovesenseManager {
                     repetitionCount: this.repetitionCount,
                     timestamp,
                   };
-
-                  if (this.detector) {
-                    const repDetected = this.detector.processSample({
-                      x,
-                      y,
-                      z,
-                    });
-                    if (repDetected) {
-                      this.repetitionCount++;
-                      console.log(
-                        `🎯 ¡Repetición detectada! Total: ${this.repetitionCount}`
-                      );
-                    }
-                  }
 
                   this.notifyListeners();
                 }
