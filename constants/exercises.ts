@@ -34,9 +34,9 @@ export const EXERCISES: Record<string, ExerciseConfig> = {
     primaryMovement: "vertical",
     imuDetection: {
       primaryAxis: "z", // Movimiento vertical
-      threshold: 9.0, // m/s² - detectar bajada/subida
-      minDuration: 1000, // 1 segundo mínimo por rep
-      restThreshold: 2.0, // m/s² - casi estático entre reps
+      threshold: 1.5, // m/s² - MÁS SENSIBLE (era 2.5)
+      minDuration: 600, // 0.6 segundos mínimo por rep (reducido)
+      restThreshold: 0.8, // m/s² - casi estático entre reps
     },
     romAngles: {
       min: 90, // Rodilla a 90° (paralelo)
@@ -70,9 +70,9 @@ export const EXERCISES: Record<string, ExerciseConfig> = {
     primaryMovement: "vertical",
     imuDetection: {
       primaryAxis: "z",
-      threshold: 8.0,
-      minDuration: 1200, // Movimiento más lento
-      restThreshold: 2.5,
+      threshold: 3.0, // Reducido para mejor sensibilidad
+      minDuration: 1000, // Movimiento más lento
+      restThreshold: 1.2,
     },
     romAngles: {
       min: 0, // Barra en el suelo
@@ -88,9 +88,9 @@ export const EXERCISES: Record<string, ExerciseConfig> = {
     primaryMovement: "angular",
     imuDetection: {
       primaryAxis: "y", // Inclinación hacia adelante
-      threshold: 40.0, // deg/s
-      minDuration: 1000,
-      restThreshold: 12.0,
+      threshold: 20.0, // deg/s (reducido)
+      minDuration: 900,
+      restThreshold: 8.0,
     },
     romAngles: {
       min: 45, // Inclinación hacia adelante
@@ -106,9 +106,9 @@ export const EXERCISES: Record<string, ExerciseConfig> = {
     primaryMovement: "vertical",
     imuDetection: {
       primaryAxis: "z",
-      threshold: 7.0,
-      minDuration: 800,
-      restThreshold: 2.0,
+      threshold: 2.5, // Reducido para mejor sensibilidad
+      minDuration: 700,
+      restThreshold: 1.0,
     },
     romAngles: {
       min: 90, // Brazos doblados (barra en pecho)
@@ -124,9 +124,9 @@ export const EXERCISES: Record<string, ExerciseConfig> = {
     primaryMovement: "vertical",
     imuDetection: {
       primaryAxis: "z",
-      threshold: 6.5,
-      minDuration: 900,
-      restThreshold: 2.2,
+      threshold: 2.5, // Reducido para mejor sensibilidad
+      minDuration: 800,
+      restThreshold: 1.0,
     },
     romAngles: {
       min: 90, // Brazos doblados (barra a altura de hombros)

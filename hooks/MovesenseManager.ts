@@ -181,6 +181,18 @@ class MovesenseManager {
           );
           console.log(`     └─ Notifiable: ${char.isNotifiable}`);
 
+          // Identificar características clave
+          if (char.uuid.toLowerCase().includes("34800001")) {
+            console.log(
+              `     🎯 ← ESTA ES LA CARACTERÍSTICA DE COMANDO (WRITE)`
+            );
+          }
+          if (char.uuid.toLowerCase().includes("34800002")) {
+            console.log(
+              `     🎯 ← ESTA ES LA CARACTERÍSTICA DE DATOS (NOTIFY)`
+            );
+          }
+
           if (char.isReadable) {
             try {
               const value = await char.read();
@@ -193,11 +205,21 @@ class MovesenseManager {
           }
         }
       }
-      console.log("\n📡 ==========================================\n");
+      console.log("\n📡 ==========================================");
+
+      // Resumen de UUIDs configurados
+      console.log("\n⚙️ UUIDs CONFIGURADOS EN LA APP:");
+      console.log(`   Service: ${MOVESENSE_SERVICE_UUID}`);
+      console.log(`   Command: ${MOVESENSE_COMMAND_CHAR}`);
+      console.log(`   Data:    ${MOVESENSE_DATA_CHAR}\n`);
 
       this.connectedDevice = connectedDevice;
       this.isConnected = true;
+      this.error = null; // Limpiar cualquier error previo
+      console.log("✅ Estado actualizado: isConnected = true");
+
       this.notifyListeners();
+      console.log(`🔔 Notificando a ${this.listeners.size} listeners`);
     } catch (err: any) {
       console.error("❌ Error conectando:", err);
       this.error = `Error conectando: ${err.message || "Desconocido"}`;
@@ -250,8 +272,17 @@ class MovesenseManager {
   }
 
   public async startDataCollection(exercise: ExerciseConfig) {
+    console.log("🎯 startDataCollection llamado");
+    console.log(`🔍 Estado actual - isConnected: ${this.isConnected}`);
+    console.log(
+      `🔍 connectedDevice:`,
+      this.connectedDevice ? this.connectedDevice.name : "null"
+    );
+
     if (!this.connectedDevice) {
-      throw new Error("No hay dispositivo conectado");
+      const errorMsg = "No hay dispositivo conectado";
+      console.error(`❌ ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     try {
@@ -260,46 +291,79 @@ class MovesenseManager {
       this.detector = new RepetitionDetector(exercise);
       this.repetitionCount = 0;
 
+      // PRIMERO: Enviar comando de suscripción al acelerómetro
+      console.log("\n🔷🔷🔷 PASO 1: ENVIAR COMANDO 🔷🔷🔷");
+      console.log("📤 Enviando comando de suscripción al acelerómetro...");
       const accCommand = {
         Op: 2,
         Path: "Meas/Acc/52",
       };
-
-      const gyroCommand = {
-        Op: 2,
-        Path: "Meas/Gyro/52",
-      };
+      console.log("📋 Comando creado:", JSON.stringify(accCommand));
 
       await this.sendMovesenseCommand(accCommand);
-      console.log("✅ Suscrito a acelerómetro (52Hz)");
+      console.log("✅ sendMovesenseCommand completado");
+      console.log("✅ Comando de suscripción enviado al dispositivo");
 
-      await this.sendMovesenseCommand(gyroCommand);
-      console.log("✅ Suscrito a giroscopio (52Hz)");
+      // Esperar un poco para que el dispositivo procese el comando
+      console.log("\n🔷🔷🔷 PASO 2: ESPERANDO 1000ms 🔷🔷🔷");
+      console.log("⏰ Esperando 1 segundo para que el dispositivo procese...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("✅ Espera completada");
+
+      // SEGUNDO: Iniciar el monitoreo DESPUÉS de enviar el comando
+      console.log("\n🔷🔷🔷 PASO 3: INICIAR MONITOREO 🔷🔷🔷");
+      console.log("📡 Iniciando monitoreo de característica de datos...");
+      console.log(`   Service UUID: ${MOVESENSE_SERVICE_UUID}`);
+      console.log(`   Char UUID: ${MOVESENSE_DATA_CHAR}`);
 
       this.imuSubscription =
         this.connectedDevice.monitorCharacteristicForService(
           MOVESENSE_SERVICE_UUID,
           MOVESENSE_DATA_CHAR,
           (error, characteristic) => {
+            console.log("📨 Callback de monitoreo llamado");
             if (error) {
-              console.error("❌ Error monitoreando datos:", error);
+              console.error("❌ Error monitoreando datos:");
+              console.error("   Código:", error.errorCode);
+              console.error("   Mensaje:", error.message);
+              console.error("   Razón:", error.reason);
               return;
             }
 
+            console.log("✅ Sin errores en callback");
+
             if (characteristic?.value) {
+              console.log(
+                "📦 Datos recibidos (base64):",
+                characteristic.value.substring(0, 50)
+              );
               try {
                 const bytes = base64.toByteArray(characteristic.value);
+                console.log(`📊 Bytes decodificados: ${bytes.length} bytes`);
                 const dataView = new DataView(bytes.buffer);
 
-                if (bytes.length >= 16) {
-                  const timestamp = dataView.getUint32(0, true);
-                  const x = dataView.getFloat32(4, true);
-                  const y = dataView.getFloat32(8, true);
-                  const z = dataView.getFloat32(12, true);
+                // Formato: [messageID][timestamp][x][y][z] = 1 + 4 + 12 = 17 bytes mínimo
+                if (bytes.length >= 17) {
+                  const messageId = bytes[0];
+                  const timestamp = dataView.getUint32(1, true); // Offset +1 por messageID
+                  const x = dataView.getFloat32(5, true); // Offset +1
+                  const y = dataView.getFloat32(9, true); // Offset +1
+                  const z = dataView.getFloat32(13, true); // Offset +1
 
+                  // Calcular magnitud del vector
+                  const magnitude = Math.sqrt(x * x + y * y + z * z);
+
+                  // Log cada muestra para debugging con colores
+                  console.log(`\n🔵 ========== DATOS IMU ==========`);
                   console.log(
-                    `📊 IMU - X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}, Z: ${z.toFixed(2)}`
+                    `📦 Message ID: ${messageId} | Timestamp: ${timestamp}`
                   );
+                  console.log(`📊 Acelerómetro (m/s²):`);
+                  console.log(`   X: ${x.toFixed(3)}`);
+                  console.log(`   Y: ${y.toFixed(3)}`);
+                  console.log(`   Z: ${z.toFixed(3)}`);
+                  console.log(`📏 Magnitud: ${magnitude.toFixed(3)} m/s²`);
+                  console.log(`🔵 ================================\n`);
 
                   // Crear muestra IMU completa
                   const imuSample = {
@@ -311,7 +375,12 @@ class MovesenseManager {
                   // Procesar con detector de repeticiones
                   if (this.detector) {
                     const result = this.detector.processSample(imuSample);
-                    this.repetitionCount = result.count;
+                    if (result.count !== this.repetitionCount) {
+                      this.repetitionCount = result.count;
+                      console.log(
+                        `🎯 ¡REPETICIÓN ${this.repetitionCount} DETECTADA!`
+                      );
+                    }
                   }
 
                   this.data = {
@@ -325,16 +394,38 @@ class MovesenseManager {
                   };
 
                   this.notifyListeners();
+                } else {
+                  const hexString = Array.from(bytes)
+                    .map((b) => b.toString(16).padStart(2, "0"))
+                    .join(" ");
+                  console.log(
+                    `📦 Paquete corto (${bytes.length} bytes): ${hexString}`
+                  );
                 }
               } catch (error) {
                 console.error("❌ Error procesando datos IMU:", error);
+                console.error(
+                  "Stack:",
+                  error instanceof Error ? error.stack : error
+                );
               }
+            } else {
+              console.warn("⚠️ Characteristic recibida sin valor");
             }
           }
         );
 
-      console.log("✅ Monitoreo de datos IMU iniciado");
+      console.log("✅ Objeto de monitoreo creado");
+
+      this.error = null;
       this.notifyListeners();
+
+      console.log("\n🔷🔷🔷 PASO 4: COMPLETADO 🔷🔷🔷");
+      console.log("✅ startDataCollection completado");
+      console.log(
+        "⏳ AHORA MUEVE EL DISPOSITIVO Y ESPERA A VER '📨 Callback de monitoreo llamado'"
+      );
+      console.log("🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷🔷\n");
     } catch (error) {
       console.error("❌ Error iniciando recolección de datos:", error);
       throw error;
@@ -342,33 +433,61 @@ class MovesenseManager {
   }
 
   public async stopDataCollection() {
-    if (!this.connectedDevice) return;
+    console.log("🛑 stopDataCollection llamado");
+    console.trace("📍 Stack trace:");
+
+    if (!this.connectedDevice) {
+      console.log("⚠️ No hay dispositivo conectado");
+      return;
+    }
 
     try {
       console.log("🛑 Deteniendo recolección de datos...");
 
+      // 1. Primero remover la suscripción local con timeout
       if (this.imuSubscription) {
-        this.imuSubscription.remove();
-        this.imuSubscription = null;
+        try {
+          await Promise.race([
+            new Promise<void>((resolve) => {
+              try {
+                this.imuSubscription?.remove();
+                resolve();
+              } catch (e) {
+                console.warn("⚠️ Error removiendo suscripción (ignorado):", e);
+                resolve();
+              }
+            }),
+            new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error("Timeout")), 2000)
+            ),
+          ]);
+          console.log("✅ Suscripción removida");
+        } catch (timeoutError) {
+          console.warn("⚠️ Timeout removiendo suscripción (continuando...)");
+        } finally {
+          this.imuSubscription = null;
+        }
       }
 
-      const accUnsubscribe = {
-        Op: 3,
-        Path: "Meas/Acc/52",
-      };
-
-      const gyroUnsubscribe = {
-        Op: 3,
-        Path: "Meas/Gyro/52",
-      };
-
-      await this.sendMovesenseCommand(accUnsubscribe);
-      await this.sendMovesenseCommand(gyroUnsubscribe);
+      // 2. Luego enviar comando de desuscripción
+      try {
+        const accUnsubscribe = {
+          Op: 3,
+          Path: "Meas/Acc/52",
+        };
+        await this.sendMovesenseCommand(accUnsubscribe);
+        console.log("✅ Desuscrito del acelerómetro");
+      } catch (cmdError) {
+        console.warn(
+          "⚠️ Error enviando comando unsubscribe (ignorado):",
+          cmdError
+        );
+      }
 
       console.log("✅ Recolección de datos detenida");
       this.notifyListeners();
     } catch (error) {
-      console.error("❌ Error deteniendo recolección de datos:", error);
+      console.error("❌ Error deteniendo recolección:", error);
     }
   }
 

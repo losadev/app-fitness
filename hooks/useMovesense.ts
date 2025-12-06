@@ -41,11 +41,18 @@ export const useMovesense = (): UseMovesenseReturn => {
 
   // Suscribirse a cambios del manager singleton
   useEffect(() => {
+    console.log("🔗 useMovesense - Suscribiéndose al manager");
+    const initialState = manager.getState();
+    console.log("📊 Estado inicial:", initialState);
+
     const unsubscribe = manager.subscribe(() => {
-      setState(manager.getState());
+      const newState = manager.getState();
+      console.log("🔄 Estado actualizado:", newState);
+      setState(newState);
     });
 
     return () => {
+      console.log("❌ useMovesense - Desuscribiéndose del manager");
       unsubscribe();
     };
   }, [manager]);

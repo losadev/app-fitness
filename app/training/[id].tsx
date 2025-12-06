@@ -110,8 +110,7 @@ export default function TrainingScreen() {
         `Iniciando serie: ${selectedExercise.name} - ${weight}kg - ${targetReps} repeticiones`
       );
 
-      // Resetear contador de repeticiones
-      movesense.resetRepetitions();
+      // NO resetear aquí, se hará cuando inicie realmente la serie
     }
   };
 
@@ -142,27 +141,40 @@ export default function TrainingScreen() {
         `Serie iniciada: ${selectedExercise?.nameEs || exercise} - ${weight}kg - ${targetReps} repeticiones`
       );
 
+      console.log(`🔍 DEBUG - movesense.isConnected: ${movesense.isConnected}`);
+      console.log(`🔍 DEBUG - selectedExercise:`, selectedExercise);
+
+      // Resetear contador JUSTO antes de iniciar
+      if (movesense.isConnected) {
+        console.log("🔄 Reseteando contador de repeticiones...");
+        movesense.resetRepetitions();
+      }
+
       // Iniciar recolección de datos si hay ejercicio seleccionado
       if (selectedExercise && movesense.isConnected) {
-        movesense.startDataCollection(selectedExercise);
-        console.log("📊 Iniciando recolección de datos IMU...");
-      } else if (!movesense.isConnected) {
-        console.warn("⚠️ Movesense no está conectado");
+        console.log("🚀 Llamando a startDataCollection...");
+        movesense
+          .startDataCollection(selectedExercise)
+          .then(() => {
+            console.log("📊 Iniciando recolección de datos IMU...");
+          })
+          .catch((error) => {
+            console.error("❌ Error al iniciar recolección:", error);
+          });
+      } else {
+        if (!selectedExercise) {
+          console.error("❌ No hay ejercicio seleccionado");
+        }
+        if (!movesense.isConnected) {
+          console.warn("⚠️ Movesense no está conectado");
+        }
       }
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [
-    isCountingDown,
-    countdown,
-    exercise,
-    weight,
-    targetReps,
-    selectedExercise,
-    movesense,
-  ]);
+  }, [isCountingDown, countdown]);
 
   // Efecto para cronómetro de la serie
   useEffect(() => {
@@ -534,8 +546,14 @@ export default function TrainingScreen() {
 
             <TouchableOpacity
               className="bg-orange-600 py-4 rounded-lg flex-row justify-center items-center"
-              onPress={() => {
-                movesense.stopDataCollection();
+              onPress={async () => {
+                console.log("🛑 Botón Finalizar Serie presionado");
+                try {
+                  await movesense.stopDataCollection();
+                  console.log("✅ Datos detenidos correctamente");
+                } catch (error) {
+                  console.error("❌ Error deteniendo datos:", error);
+                }
                 setTrainingPhase("training");
                 setSeriesStartTime(null);
               }}

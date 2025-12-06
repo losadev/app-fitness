@@ -39,6 +39,20 @@ export class RepetitionDetector {
    * Procesa una nueva muestra de IMU y actualiza el contador de repeticiones
    */
   processSample(sample: IMUSample): { count: number; phase: string } {
+    // Verificar si tenemos datos válidos
+    const hasGyroData =
+      sample.gyroscope.x !== 0 ||
+      sample.gyroscope.y !== 0 ||
+      sample.gyroscope.z !== 0;
+    const hasAccData =
+      sample.accelerometer.x !== 0 ||
+      sample.accelerometer.y !== 0 ||
+      sample.accelerometer.z !== 0;
+
+    if (!hasAccData && !hasGyroData) {
+      console.warn("⚠️ Muestra IMU sin datos válidos");
+      return { count: this.state.count, phase: this.state.phase };
+    }
     // Agregar muestra al buffer
     this.state.buffer.push(sample);
     if (this.state.buffer.length > this.BUFFER_SIZE) {
@@ -50,18 +64,48 @@ export class RepetitionDetector {
 
     // Determinar si usamos acelerómetro o giroscopio
     let magnitude: number;
+    let sensorType: string;
 
     if (this.exercise.primaryMovement === "angular") {
       // Usar giroscopio para movimientos angulares
-      magnitude = Math.abs(sample.gyroscope[primaryAxis]);
+      const hasGyroData =
+        sample.gyroscope.x !== 0 ||
+        sample.gyroscope.y !== 0 ||
+        sample.gyroscope.z !== 0;
+
+      if (hasGyroData) {
+        magnitude = Math.abs(sample.gyroscope[primaryAxis]);
+        sensorType = "gyro";
+      } else {
+        // Fallback: usar magnitud total del acelerómetro
+        magnitude = this.getAccelerationMagnitude(sample.accelerometer);
+        sensorType = "acc_total";
+        console.warn(
+          "⚠️ Gyro data not available, using accelerometer magnitude"
+        );
+      }
     } else {
       // Usar acelerómetro para movimientos lineales
-      magnitude = Math.abs(sample.accelerometer[primaryAxis]);
+      // Probar primero el eje específico
+      const axisValue = Math.abs(sample.accelerometer[primaryAxis]);
+
+      // Si el valor del eje es muy bajo, usar la magnitud total del vector
+      if (axisValue < 0.5) {
+        magnitude = this.getAccelerationMagnitude(sample.accelerometer);
+        sensorType = "acc_total";
+      } else {
+        magnitude = axisValue;
+        sensorType = "acc";
+      }
     }
 
     this.state.currentMagnitude = magnitude;
 
-    // Máquina de estados para detección de repeticiones
+    // Log detallado en CADA muestra para debugging
+    console.log(
+      `🔍 [${this.exercise.nameEs}] ${sensorType}[${primaryAxis}]=${magnitude.toFixed(3)} | ` +
+        `Umbral: ${threshold} | Fase: ${this.state.phase} | Reps: ${this.state.count}`
+    ); // Máquina de estados para detección de repeticiones
     const now = sample.timestamp;
 
     switch (this.state.phase) {
